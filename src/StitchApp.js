@@ -1,5 +1,6 @@
 import React, { Component } from 'react';
-import { Stitch, AnonymousCredential } from 'mongodb-stitch-browser-sdk'
+//import { Stitch, AnonymousCredential } from 'mongodb-stitch-browser-sdk'
+import { Stitch, GoogleRedirectCredential } from 'mongodb-stitch-browser-sdk'
 import { AwsServiceClient, AwsRequest } from 'mongodb-stitch-browser-services-aws'
 import './App.css';
 import FileInput from './FileInput.js'
@@ -28,7 +29,15 @@ class StitchApp extends Component {
       console.log('Logged in as anonymous user with id ${user.id}')
     }).catch(console.error)
     this.aws = this.client.getServiceClient(AwsServiceClient.factory, 'AWS')
+    const isAuthed = this.client.auth.isLogged
+    this.state = {
+      isAuthed
+    }
     this.handleFileUpload = this.handleFileUpload.bind(this)
+  }
+  
+  componentDidMount() {
+    
   }
 
   handleFileUpload(file) {
@@ -68,11 +77,23 @@ class StitchApp extends Component {
   }
 
   render() {
+    const { isAuthed } = this.state
+    
     return (
       <div className="App">
-        <div>
-        <FileInput handleFileUpload={this.handleFileUpload} />
-        </div>
+        { isAuthed ? (
+          <div>
+            <h2> You are authed </h2>
+            <FileInput handleFileUpload={this.handleFileUpload} />
+          </div>
+        ) : (
+          <button onClick={() => {
+            const credential = new GoogleRedirectCredential();
+            this.client.auth.loginWithRedirect(credential);
+          }}>
+          Sign in using Google
+          </button>
+        )}
       </div>
     );
   }
