@@ -37,9 +37,13 @@ class StitchApp extends Component {
   }
   
   componentDidMount() {
-    
+    if (this.client.auth.hasRedirectResult()) {
+      this.client.auth.handleRedirectResult().then(user => {
+        this.setState({ isAuthed: this.client.auth.isLoggedIn })
+      })
+    }
   }
-
+  
   handleFileUpload(file) {
     if (!file) {
       return
