@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
-//import { Stitch, AnonymousCredential } from 'mongodb-stitch-browser-sdk'
 import { Stitch, GoogleRedirectCredential } from 'mongodb-stitch-browser-sdk'
+import { RemoteMongoClient } from 'mongodb-stitch-browser-services-mongodb-remote'
 import { AwsServiceClient, AwsRequest } from 'mongodb-stitch-browser-services-aws'
 import './App.css';
 import FileInput from './FileInput.js'
@@ -25,9 +25,10 @@ class StitchApp extends Component {
     super(props)
     this.appId = props.appId
     this.client = Stitch.initializeDefaultAppClient(this.appId)
-    this.client.auth.loginWithCredential(new AnonymousCredential()).then(user => {
-      console.log('Logged in as anonymous user with id ${user.id}')
-    }).catch(console.error)
+    this.mongodb = this.client.getServiceClient(
+      RemoteMongoClient.factory,
+      'mongodb-atlas'
+    )
     this.aws = this.client.getServiceClient(AwsServiceClient.factory, 'AWS')
     const isAuthed = this.client.auth.isLogged
     this.state = {
@@ -35,7 +36,7 @@ class StitchApp extends Component {
     }
     this.handleFileUpload = this.handleFileUpload.bind(this)
   }
-  
+
   componentDidMount() {
     if (this.client.auth.hasRedirectResult()) {
       this.client.auth.handleRedirectResult().then(user => {
@@ -43,18 +44,18 @@ class StitchApp extends Component {
       })
     }
   }
-  
+
   handleFileUpload(file) {
     if (!file) {
       return
     }
 
     convertImageToBSONBinaryObject(file).then(result => {
-      //const picstream = this.mongodb.db('data').collection('picstream')
+      const images = this.mongodb.db('Portfolio').collection('Images')
 
       //this will be the authenticated user's id and file name
       const key = `${this.client.auth.user.id}-${file.name}`
-      const bucket = 'stitchcraft-picstream'
+      const bucket = 'nal-portfolio-images'
       const url = `http://${bucket}.s3.amazonaws.com/${encodeURIComponent(key)}`
 
       const args = {
@@ -71,18 +72,34 @@ class StitchApp extends Component {
         .withRegion('us-east-1')
         .withArgs(args)
 
-        this.aws().execute(request.build())
+        this.aws.execute(request.build())
         .then(result => {
           console.log(result)
           console.log(url)
+          return images.findOneAndUpdate(
+            {owner_id: this.client.auth.user.id},
+            {$addToSet: {
+              file_url: url,
+              file: {
+                name: file.name,
+                type: file.type
+              }
+            }},
+            {upsert: true, returnNewDocument: true}
+          )
         })
-
+        .then(result => {
+          console.log(result)
+        })
+        .catch(err => {
+          console.log(err)
+        })
     })
   }
 
   render() {
     const { isAuthed } = this.state
-    
+
     return (
       <div className="App">
         { isAuthed ? (

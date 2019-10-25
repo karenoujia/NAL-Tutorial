@@ -5,6 +5,7 @@
   "dependencies": {
     "mongodb-stitch-browser-sdk": "^4.5.0",
     "mongodb-stitch-browser-services-aws": "^4.5.0",
+    "mongodb-stitch-browser-services-mongodb-remote": "^4.5.0",
     "react": "^16.10.2",
     "react-dom": "^16.10.2",
     "react-scripts": "3.2.0"
